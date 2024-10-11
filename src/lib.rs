@@ -118,6 +118,8 @@ impl TimeZone {
 ///
 /// # Example:
 /// ```
+/// use timekit;
+/// use timekit::TimeZone;
 /// let current_time_kst = timekit::now(TimeZone::KST);  // Returns current time in Korea Standard Time (KST).
 /// let current_time_utc = timekit::now(TimeZone::UTC);  // Returns current time in UTC.
 /// ```
@@ -178,10 +180,11 @@ pub fn now(timezone: TimeZone) -> DateTime {
 ///
 /// # Example:
 /// ```
+/// use timekit::is_leap_year;
 /// let leap_year = is_leap_year(2024);  // true
 /// let common_year = is_leap_year(2023);  // false
 /// ```
-fn is_leap_year(year: u64) -> bool {
+pub fn is_leap_year(year: u64) -> bool {
     // A leap year is divisible by 4 but not divisible by 100,
     // except if it is divisible by 400.
     (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)
@@ -205,11 +208,12 @@ fn is_leap_year(year: u64) -> bool {
 ///
 /// # Example:
 /// ```
+/// use timekit::days_in_month;
 /// let days_in_january = days_in_month(1, 2024);  // 31
 /// let days_in_february_leap_year = days_in_month(2, 2024);  // 29
 /// let days_in_february_common_year = days_in_month(2, 2023);  // 28
 /// ```
-fn days_in_month(month: u64, year: u64) -> u64 {
+pub fn days_in_month(month: u64, year: u64) -> u64 {
     match month {
         1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,  // January, March, May, July, August, October, December have 31 days
         4 | 6 | 9 | 11 => 30,  // April, June, September, November have 30 days
