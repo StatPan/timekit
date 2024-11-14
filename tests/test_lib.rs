@@ -339,7 +339,8 @@ mod tests {
     // Test a leap second case (even though Rust does not handle leap seconds directly)
     #[test]
     fn test_leap_second() {
-        let leap_second_case = DateTime::new(2023, 12, 31, 23, 59, 60).unwrap(); // Simulated leap second
-        assert!(leap_second_case.second <= 60); // Normally seconds range from 0-59
+        let leap_second_case = DateTime::new(2023, 12, 31, 23, 59, 60); // Simulated leap second
+        assert_eq!(leap_second_case.unwrap_err(), "Invalid second".to_string());
+        // Normally seconds range from 0-59
     }
 }
