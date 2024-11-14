@@ -1,6 +1,6 @@
 [package]
 name = "timekit"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["StatPan <statpan@naver.com>"]
 edition = "2021"
 description = "A simple Rust library for working with timezones and displaying current time in multiple zones."

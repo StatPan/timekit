@@ -28,7 +28,7 @@ To start using `TimeKit`, add the following line to your `Cargo.toml` file under
 
 ```toml
 [dependencies]
-timekit = "0.1.1"  # Adjust to the latest version
+timekit = "0.1.2"
 ```
 Then, in your Rust code:
 
@@ -45,15 +45,15 @@ use timekit::now;
 
 fn main() {
     // Get the current time in UTC
-    let utc_time = now(TimeZone::UTC);
+    let utc_time = now(TimeZone::UTC).unwrap();
     println!("Current UTC time: {}", utc_time);
 
     // Get the current time in Korea Standard Time (KST)
-    let kst_time = now(TimeZone::KST);
+    let kst_time = now(TimeZone::KST).unwrap();
     println!("Current KST time: {}", kst_time);
 
     // Get the current time in Eastern Standard Time (EST)
-    let est_time = now(TimeZone::EST);
+    let est_time = now(TimeZone::EST).unwrap();
     println!("Current EST time: {}", est_time);
 }
 ```
