@@ -1,9 +1,9 @@
 // Bring in the constants from const.rs
 mod constants;
-use constants::*;  // Use all constants
+use constants::*; // Use all constants
 
-use std::fmt;
 use std::time::{SystemTime, UNIX_EPOCH};
+use std::{fmt, ops::Add, ops::Sub};
 
 /// Struct for holding the full date and time information.
 #[derive(Debug)]
@@ -18,15 +18,45 @@ pub struct DateTime {
 
 impl DateTime {
     /// Creates a new `DateTime` object.
-    pub fn new(year: u64, month: u64, day: u64, hour: u64, minute: u64, second: u64) -> Self {
-        Self { year, month, day, hour, minute, second }
+    pub fn new(
+        year: u64,
+        month: u64,
+        day: u64,
+        hour: u64,
+        minute: u64,
+        second: u64,
+    ) -> Result<Self, String> {
+        if month < 1 || month > 12 {
+            return Err("Invalid month".to_string());
+        }
+        if day < 1 || day > days_in_month(month, year) {
+            return Err("Invalid day".to_string());
+        }
+        if hour > 23 {
+            return Err("Invalid hour".to_string());
+        }
+        if minute > 59 {
+            return Err("Invalid minute".to_string());
+        }
+        if second > 59 {
+            return Err("Invalid second".to_string());
+        }
+
+        Ok(Self {
+            year,
+            month,
+            day,
+            hour,
+            minute,
+            second,
+        })
     }
 }
 
 impl fmt::Display for DateTime {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-         // Format the DateTime struct to a readable "YYYY-MM-DD HH:MM:SS" format.
-         write!(
+        // Format the DateTime struct to a readable "YYYY-MM-DD HH:MM:SS" format.
+        write!(
             f,
             "{:04}-{:02}-{:02} {:02}:{:02}:{:02}",
             self.year, self.month, self.day, self.hour, self.minute, self.second
@@ -38,28 +68,28 @@ impl fmt::Display for DateTime {
 #[derive(Debug, Clone, Copy)]
 pub enum TimeZone {
     UTC,
-    KST,  // Korea Standard Time (UTC+9)
-    EST,  // Eastern Standard Time (UTC-5)
-    PST,  // Pacific Standard Time (UTC-8)
-    JST,  // Japan Standard Time (UTC+9)
-    IST,  // India Standard Time (UTC+5:30)
-    CET,  // Central European Time (UTC+1)
-    AST,  // Atlantic Standard Time (UTC-4)
-    CST,  // Central Standard Time (UTC-6)
-    MST,  // Mountain Standard Time (UTC-7)
-    AKST, // Alaska Standard Time (UTC-9)
-    HST,  // Hawaii Standard Time (UTC-10)
-    BST,  // British Summer Time (UTC+1)
-    WET,  // Western European Time (UTC+0)
-    EET,  // Eastern European Time (UTC+2)
-    SAST, // South Africa Standard Time (UTC+2)
-    EAT,  // East Africa Time (UTC+3)
-    AEST, // Australian Eastern Standard Time (UTC+10)
-    ACST, // Australian Central Standard Time (UTC+9:30)
-    AWST, // Australian Western Standard Time (UTC+8)
-    CSTAsia,  // China Standard Time (UTC+8)
-    SGT,  // Singapore Time (UTC+8)
-    HKT,  // Hong Kong Time (UTC+8)
+    KST,     // Korea Standard Time (UTC+9)
+    EST,     // Eastern Standard Time (UTC-5)
+    PST,     // Pacific Standard Time (UTC-8)
+    JST,     // Japan Standard Time (UTC+9)
+    IST,     // India Standard Time (UTC+5:30)
+    CET,     // Central European Time (UTC+1)
+    AST,     // Atlantic Standard Time (UTC-4)
+    CST,     // Central Standard Time (UTC-6)
+    MST,     // Mountain Standard Time (UTC-7)
+    AKST,    // Alaska Standard Time (UTC-9)
+    HST,     // Hawaii Standard Time (UTC-10)
+    BST,     // British Summer Time (UTC+1)
+    WET,     // Western European Time (UTC+0)
+    EET,     // Eastern European Time (UTC+2)
+    SAST,    // South Africa Standard Time (UTC+2)
+    EAT,     // East Africa Time (UTC+3)
+    AEST,    // Australian Eastern Standard Time (UTC+10)
+    ACST,    // Australian Central Standard Time (UTC+9:30)
+    AWST,    // Australian Western Standard Time (UTC+8)
+    CSTAsia, // China Standard Time (UTC+8)
+    SGT,     // Singapore Time (UTC+8)
+    HKT,     // Hong Kong Time (UTC+8)
 }
 
 impl TimeZone {
@@ -94,11 +124,11 @@ impl TimeZone {
 }
 
 /// Returns the current date and time adjusted for the specified time zone.
-/// 
-/// This function calculates the current date and time based on the system's current time 
-/// (measured as the number of seconds since the UNIX Epoch: 1970-01-01 00:00:00 UTC) 
-/// and adjusts it according to the time zone provided. The time zone offsets are hardcoded 
-/// to avoid unnecessary runtime computation. 
+///
+/// This function calculates the current date and time based on the system's current time
+/// (measured as the number of seconds since the UNIX Epoch: 1970-01-01 00:00:00 UTC)
+/// and adjusts it according to the time zone provided. The time zone offsets are hardcoded
+/// to avoid unnecessary runtime computation.
 ///
 /// The function follows these steps:
 /// 1. Retrieves the current system time as seconds since the UNIX Epoch.
@@ -123,18 +153,17 @@ impl TimeZone {
 /// let current_time_kst = timekit::now(TimeZone::KST);  // Returns current time in Korea Standard Time (KST).
 /// let current_time_utc = timekit::now(TimeZone::UTC);  // Returns current time in UTC.
 /// ```
-pub fn now(timezone: TimeZone) -> DateTime {
+pub fn now(timezone: TimeZone) -> Result<DateTime, String> {
     // Get the current system time since UNIX_EPOCH in seconds and milliseconds.
     let now = SystemTime::now();
-    let duration_since_epoch = now.duration_since(UNIX_EPOCH)
-        .expect("Time went backwards");
-    
+    let duration_since_epoch = now.duration_since(UNIX_EPOCH).expect("Time went backwards");
+
     // Total seconds since UNIX epoch.
     let total_seconds = duration_since_epoch.as_secs();
-    
+
     // Get the time zone offset in seconds.
     let timezone_offset = timezone.offset_in_seconds();
-    
+
     // Adjust total seconds based on the time zone offset.
     let adjusted_seconds = (total_seconds as i64 + timezone_offset) as u64;
 
@@ -169,7 +198,7 @@ pub fn now(timezone: TimeZone) -> DateTime {
 ///
 /// A leap year is a year that is divisible by 4 but not divisible by 100,
 /// except when the year is also divisible by 400. This rule is part of the
-/// Gregorian calendar, which adds an extra day to February (29 days) to 
+/// Gregorian calendar, which adds an extra day to February (29 days) to
 /// keep the calendar year synchronized with the astronomical year.
 ///
 /// # Parameters:
@@ -215,8 +244,8 @@ pub fn is_leap_year(year: u64) -> bool {
 /// ```
 pub fn days_in_month(month: u64, year: u64) -> u64 {
     match month {
-        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,  // January, March, May, July, August, October, December have 31 days
-        4 | 6 | 9 | 11 => 30,  // April, June, September, November have 30 days
+        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31, // January, March, May, July, August, October, December have 31 days
+        4 | 6 | 9 | 11 => 30,              // April, June, September, November have 30 days
         2 => {
             // February has 29 days in a leap year, otherwise it has 28 days
             if is_leap_year(year) {
@@ -225,6 +254,6 @@ pub fn days_in_month(month: u64, year: u64) -> u64 {
                 28
             }
         }
-        _ => 0,  // Invalid month input, returns 0 (shouldn't happen with proper input validation)
+        _ => 0, // Invalid month input, returns 0 (shouldn't happen with proper input validation)
     }
 }
