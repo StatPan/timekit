@@ -343,4 +343,10 @@ mod tests {
         assert_eq!(leap_second_case.unwrap_err(), "Invalid second".to_string());
         // Normally seconds range from 0-59
     }
+
+    #[test]
+    fn test_valid_strftime() {
+        let dt = DateTime::new(2023, 8, 3, 5, 20, 59).unwrap();
+        assert_eq!(dt.strftime("%Y-%m-%d %H:%M:%S"), "2023-08-03 05:20:59");
+    }
 }

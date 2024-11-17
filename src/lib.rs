@@ -51,6 +51,17 @@ impl DateTime {
             second,
         })
     }
+
+    pub fn strftime(&self, format: &str) -> String {
+        let mut result = format.to_string();
+        result = result.replace("%Y", &format!("{:04}", self.year));
+        result = result.replace("%m", &format!("{:02}", self.month));
+        result = result.replace("%d", &format!("{:02}", self.day));
+        result = result.replace("%H", &format!("{:02}", self.hour));
+        result = result.replace("%M", &format!("{:02}", self.minute));
+        result = result.replace("%S", &format!("{:02}", self.second));
+        result
+    }
 }
 
 impl fmt::Display for DateTime {
