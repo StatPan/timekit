@@ -224,7 +224,7 @@ pub fn now(timezone: TimeZone) -> Result<DateTime, String> {
 /// let leap_year = is_leap_year(2024);  // true
 /// let common_year = is_leap_year(2023);  // false
 /// ```
-pub fn is_leap_year(year: u64) -> bool {
+pub const fn is_leap_year(year: u64) -> bool {
     // A leap year is divisible by 4 but not divisible by 100,
     // except if it is divisible by 400.
     (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)
