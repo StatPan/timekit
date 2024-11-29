@@ -28,7 +28,7 @@ To start using `TimeKit`, add the following line to your `Cargo.toml` file under
 
 ```toml
 [dependencies]
-timekit = "0.1.2"
+timekit = "0.1.4"
 ```
 Then, in your Rust code:
 
