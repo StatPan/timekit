@@ -1,4 +1,3 @@
-// Time zone offsets in seconds (hardcoded values)
 pub const OFFSET_UTC: i64 = 0;
 pub const OFFSET_KST: i64 = 32400; // Korea Standard Time (UTC+9)
 pub const OFFSET_EST: i64 = -18000; // Eastern Standard Time (UTC-5)
@@ -24,8 +23,9 @@ pub const OFFSET_SGT: i64 = 28800; // Singapore Time (UTC+8)
 pub const OFFSET_HKT: i64 = 28800; // Hong Kong Time (UTC+8)
 
 // Time units
-pub const SECONDS_IN_YEAR: u64 = 31_536_000; //365 days to seconds
-pub const SECONDS_IN_MONTH: u64 = 2_592_000; //30 days to seconds
-pub const SECONDS_IN_DAY: u64 = 86_400;
-pub const SECONDS_IN_HOUR: u64 = 3_600;
-pub const SECONDS_IN_MINUTE: u64 = 60;
+pub const SECONDS_IN_YEAR: i64 = 31_536_000; //365 days to seconds
+pub const SECONDS_IN_LEAPYEAR: i64 = 31_622_400; //366 days to seconds
+pub const SECONDS_IN_WEEK: i64 = 604_800; //7 days to seconds
+pub const SECONDS_IN_DAY: i64 = 86_400;
+pub const SECONDS_IN_HOUR: i64 = 3_600;
+pub const SECONDS_IN_MINUTE: i64 = 60;
