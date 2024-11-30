@@ -1,352 +1,435 @@
 #[cfg(test)]
 mod tests {
-    use timekit::*;
+    use super::*;
+    use std::ops::{Add, Sub};
+    use timekit::{
+        adjust_second_with_timezone, calculate_date_since_epoch, compute_total_seconds,
+        constants::*, days_in_month, is_leap_year, now, DateTime, TimeDelta, TimeZone,
+    };
 
-    // Tests for the is_leap_year function
+    // Test the is_leap_year function
     #[test]
     fn test_is_leap_year() {
-        // Regular leap year case
-        assert_eq!(is_leap_year(2024), true); // Leap year
-                                              // Regular non-leap year case
-        assert_eq!(is_leap_year(2023), false); // Common year
-                                               // Leap year divisible by 400 (special case for century leap years)
-        assert_eq!(is_leap_year(2000), true); // Leap year (divisible by 400)
-                                              // Non-leap century year divisible by 100 but not by 400
-        assert_eq!(is_leap_year(1900), false); // Common year (divisible by 100 but not by 400)
-                                               // Edge case for year 0 (which is considered a leap year)
-        assert_eq!(is_leap_year(0), true); // Year 0 is a leap year
-                                           // Large year case (year 4000)
-        assert_eq!(is_leap_year(4000), true); // Leap year
-                                              // Non-leap year just before a leap year
-        assert_eq!(is_leap_year(3999), false); // Common year
+        // Regular leap years
+        assert_eq!(is_leap_year(2020), true);
+        assert_eq!(is_leap_year(2024), true);
+
+        // Century years not leap years unless divisible by 400
+        assert_eq!(is_leap_year(1900), false);
+        assert_eq!(is_leap_year(2000), true);
+
+        // Common years
+        assert_eq!(is_leap_year(2019), false);
+        assert_eq!(is_leap_year(2021), false);
     }
 
-    // Tests for the days_in_month function
+    // Test the days_in_month function
     #[test]
     fn test_days_in_month() {
-        // Regular months with 31 days
-        assert_eq!(days_in_month(1, 2023), 31); // January
-        assert_eq!(days_in_month(12, 2023), 31); // December
-                                                 // Regular months with 30 days
-        assert_eq!(days_in_month(4, 2023), 30); // April
-        assert_eq!(days_in_month(6, 2023), 30); // June
-                                                // February in a leap year
-        assert_eq!(days_in_month(2, 2024), 29); // Leap year February
-                                                // February in a common year
-        assert_eq!(days_in_month(2, 2023), 28); // Common year February
-                                                // Edge case for invalid month
-        assert_eq!(days_in_month(13, 2023), 0); // Invalid month (month 13)
-        assert_eq!(days_in_month(0, 2023), 0); // Invalid month (month 0)
+        // Months with 31 days
+        assert_eq!(days_in_month(1, 2023), 31);
+        assert_eq!(days_in_month(3, 2023), 31);
+        assert_eq!(days_in_month(5, 2023), 31);
+        assert_eq!(days_in_month(7, 2023), 31);
+        assert_eq!(days_in_month(8, 2023), 31);
+        assert_eq!(days_in_month(10, 2023), 31);
+        assert_eq!(days_in_month(12, 2023), 31);
+
+        // Months with 30 days
+        assert_eq!(days_in_month(4, 2023), 30);
+        assert_eq!(days_in_month(6, 2023), 30);
+        assert_eq!(days_in_month(9, 2023), 30);
+        assert_eq!(days_in_month(11, 2023), 30);
+
+        // February in leap year
+        assert_eq!(days_in_month(2, 2024), 29);
+
+        // February in common year
+        assert_eq!(days_in_month(2, 2023), 28);
+
+        // Invalid month
+        assert_eq!(days_in_month(13, 2023), 0);
+        assert_eq!(days_in_month(0, 2023), 0);
     }
 
-    // Tests for the now function with different timezones
+    // Test the DateTime::new function with valid inputs
+    #[test]
+    fn test_datetime_new_valid() {
+        let datetime = DateTime::new(2023, 1, 1, 0, 0, 0, TimeZone::UTC);
+        assert!(datetime.is_ok());
+
+        let datetime = DateTime::new(2024, 2, 29, 23, 59, 59, TimeZone::UTC); // Leap year
+        assert!(datetime.is_ok());
+
+        let datetime = DateTime::new(2023, 12, 31, 23, 59, 59, TimeZone::UTC);
+        assert!(datetime.is_ok());
+    }
+
+    // Test the DateTime::new function with invalid inputs
+    #[test]
+    fn test_datetime_new_invalid() {
+        // Invalid month
+        let datetime = DateTime::new(2023, 0, 1, 0, 0, 0, TimeZone::UTC);
+        assert!(datetime.is_err());
+
+        let datetime = DateTime::new(2023, 13, 1, 0, 0, 0, TimeZone::UTC);
+        assert!(datetime.is_err());
+
+        // Invalid day
+        let datetime = DateTime::new(2023, 2, 29, 0, 0, 0, TimeZone::UTC); // Not a leap year
+        assert!(datetime.is_err());
+
+        // Invalid hour
+        let datetime = DateTime::new(2023, 1, 1, 24, 0, 0, TimeZone::UTC);
+        assert!(datetime.is_err());
+
+        // Invalid minute
+        let datetime = DateTime::new(2023, 1, 1, 0, 60, 0, TimeZone::UTC);
+        assert!(datetime.is_err());
+
+        // Invalid second
+        let datetime = DateTime::new(2023, 1, 1, 0, 0, 60, TimeZone::UTC);
+        assert!(datetime.is_err());
+    }
+
+    // Test the now function for UTC timezone
     #[test]
     fn test_now_utc() {
-        let current_time_utc = now(TimeZone::UTC).unwrap();
-        // Ensure year is valid and not before the Unix epoch
-        assert!(current_time_utc.year >= 1970); // Year must be after 1970
-                                                // Ensure month is valid
-        assert!(current_time_utc.month >= 1 && current_time_utc.month <= 12);
-        // Month range 1-12
-        // Ensure day is valid
-        assert!(current_time_utc.day >= 1 && current_time_utc.day <= 31);
-        // Day range 1-31
+        let current_time = now(TimeZone::UTC).unwrap();
+        assert!(current_time.year >= 1970);
+        assert!(current_time.month >= 1 && current_time.month <= 12);
+        assert!(current_time.day >= 1 && current_time.day <= 31);
+        assert!(current_time.hour <= 23);
+        assert!(current_time.minute <= 59);
+        assert!(current_time.second <= 59);
     }
 
+    // Test the now function for KST timezone
     #[test]
     fn test_now_kst() {
-        let current_time_kst = now(TimeZone::KST).unwrap();
-        // Ensure hour is within the valid range for KST (0-23)
-        assert!(current_time_kst.hour <= 23); // Removed unnecessary >= 0 check for u64
-                                              // Ensure the day and hour values are logically consistent (no hour overflow)
-        assert!(current_time_kst.day >= 1 && current_time_kst.day <= 31);
-        // Day range 1-31
+        let current_time = now(TimeZone::KST).unwrap();
+        assert!(current_time.year >= 1970);
+        assert!(current_time.month >= 1 && current_time.month <= 12);
+        assert!(current_time.day >= 1 && current_time.day <= 31);
+        assert!(current_time.hour <= 23);
+        assert!(current_time.minute <= 59);
+        assert!(current_time.second <= 59);
     }
 
-    // Edge case: Test transition from December 31st to January 1st in different timezonesㅁ
+    // Test strftime formatting
     #[test]
-    fn test_kst_year_boundary_transition() {
-        // UTC time on December 31, 2023, 23:59:59
-        let december_31_utc = DateTime::new(2023, 12, 31, 23, 59, 59).unwrap();
-
-        // Expected KST time should be January 1, 2024, 08:59:59 (KST is +9 hours ahead)
-        let january_1_kst = DateTime::new(2024, 1, 1, 8, 59, 59).unwrap();
-
-        // Calculate KST time by adding 9 hours
-        let mut kst_hour = december_31_utc.hour + 9;
-        let mut kst_day = december_31_utc.day;
-        let mut kst_month = december_31_utc.month;
-        let mut kst_year = december_31_utc.year;
-        let minute = december_31_utc.minute;
-        let second = december_31_utc.second;
-
-        // Adjust if the hour exceeds 24
-        if kst_hour >= 24 {
-            kst_hour -= 24;
-            kst_day += 1;
-        }
-
-        // Adjust day and month if needed (handle month overflow)
-        let days_in_current_month = days_in_month(kst_month, kst_year);
-        if kst_day > days_in_current_month {
-            kst_day = 1;
-            kst_month += 1;
-            if kst_month > 12 {
-                kst_month = 1;
-                kst_year += 1;
-            }
-        }
-
-        // Verify that the calculated KST time matches the expected time
-        assert_eq!(january_1_kst.hour, kst_hour);
-        assert_eq!(january_1_kst.day, kst_day);
-        assert_eq!(january_1_kst.month, kst_month);
-        assert_eq!(january_1_kst.year, kst_year);
-        assert_eq!(january_1_kst.minute, minute);
-        assert_eq!(january_1_kst.second, second);
+    fn test_strftime() {
+        let datetime = DateTime::new(2023, 8, 3, 5, 20, 59, TimeZone::UTC).unwrap();
+        let formatted = datetime.strftime("%Y-%m-%d %H:%M:%S");
+        assert_eq!(formatted, "2023-08-03 05:20:59");
     }
 
+    // Test to_unix_seconds and from_unix_seconds functions
     #[test]
-    fn test_ist_year_boundary_transition() {
-        // UTC time on December 31, 2023, 23:59:59
-        let december_31_utc = DateTime::new(2023, 12, 31, 23, 59, 59).unwrap();
+    fn test_unix_seconds_conversion() {
+        let datetime = DateTime::new(2023, 1, 1, 0, 0, 0, TimeZone::UTC).unwrap();
+        let unix_seconds = datetime.to_unix_seconds();
+        let converted_datetime = DateTime::from_unix_seconds(unix_seconds, TimeZone::UTC).unwrap();
+        assert_eq!(datetime, converted_datetime);
 
-        // Expected IST time should be January 1, 2024, 05:29:59 (IST is +5 hours 30 minutes ahead)
-        let january_1_ist = DateTime::new(2024, 1, 1, 5, 29, 59).unwrap();
+        // Test with different timezone
+        let datetime_kst = DateTime::new(2023, 1, 1, 9, 0, 0, TimeZone::KST).unwrap();
+        let unix_seconds_kst = datetime_kst.to_unix_seconds();
+        let converted_datetime_kst =
+            DateTime::from_unix_seconds(unix_seconds_kst, TimeZone::KST).unwrap();
+        assert_eq!(datetime_kst, converted_datetime_kst);
 
-        // Calculate IST time by adding 5 hours and 30 minutes
-        let total_minutes = december_31_utc.minute + 30;
-        let ist_minute = total_minutes % 60;
-        let carry_over_hour = total_minutes / 60;
-        let mut ist_hour = december_31_utc.hour + 5 + carry_over_hour;
-        let mut ist_day = december_31_utc.day;
-        let mut ist_month = december_31_utc.month;
-        let mut ist_year = december_31_utc.year;
-        let second = december_31_utc.second;
-
-        // Adjust if the hour exceeds 24
-        if ist_hour >= 24 {
-            ist_hour -= 24;
-            ist_day += 1;
-        }
-
-        // Adjust day and month if needed (handle month overflow)
-        let days_in_current_month = days_in_month(ist_month, ist_year);
-        if ist_day > days_in_current_month {
-            ist_day = 1;
-            ist_month += 1;
-            if ist_month > 12 {
-                ist_month = 1;
-                ist_year += 1;
-            }
-        }
-
-        // Verify that the calculated IST time matches the expected time
-        assert_eq!(january_1_ist.hour, ist_hour);
-        assert_eq!(january_1_ist.minute, ist_minute);
-        assert_eq!(january_1_ist.day, ist_day);
-        assert_eq!(january_1_ist.month, ist_month);
-        assert_eq!(january_1_ist.year, ist_year);
-        assert_eq!(january_1_ist.second, second);
+        // Ensure unix_seconds are the same for UTC and KST adjusted for timezone
+        assert_eq!(unix_seconds, unix_seconds_kst);
     }
 
+    // Test add_timedelta function
     #[test]
-    fn test_leap_year_transition_kst() {
-        // UTC time on February 28, 2024, 23:59:59
-        let february_28_utc = DateTime::new(2024, 2, 28, 23, 59, 59).unwrap();
-
-        // Expected KST time should be February 29, 2024, 08:59:59
-        let february_29_kst = DateTime::new(2024, 2, 29, 8, 59, 59).unwrap();
-
-        // Calculate KST time by adding 9 hours
-        let mut kst_hour = february_28_utc.hour + 9;
-        let mut kst_day = february_28_utc.day;
-        let mut kst_month = february_28_utc.month;
-        let mut kst_year = february_28_utc.year;
-        let minute = february_28_utc.minute;
-        let second = february_28_utc.second;
-
-        // Adjust if the hour exceeds 24
-        if kst_hour >= 24 {
-            kst_hour -= 24;
-            kst_day += 1;
-        }
-
-        // Adjust day and month if needed
-        let days_in_current_month = days_in_month(kst_month, kst_year);
-        if kst_day > days_in_current_month {
-            kst_day = 1;
-            kst_month += 1;
-            if kst_month > 12 {
-                kst_month = 1;
-                kst_year += 1;
-            }
-        }
-
-        // Verify that the calculated KST time matches the expected time
-        assert_eq!(february_29_kst.hour, kst_hour);
-        assert_eq!(february_29_kst.day, kst_day);
-        assert_eq!(february_29_kst.month, kst_month);
-        assert_eq!(february_29_kst.year, kst_year);
-        assert_eq!(february_29_kst.minute, minute);
-        assert_eq!(february_29_kst.second, second);
-    }
-
-    #[test]
-    fn test_non_leap_year_transition_kst() {
-        // UTC time on February 28, 2023, 23:59:59
-        let february_28_utc = DateTime::new(2023, 2, 28, 23, 59, 59).unwrap();
-
-        // Expected KST time should be March 1, 2023, 08:59:59
-        let march_1_kst = DateTime::new(2023, 3, 1, 8, 59, 59).unwrap();
-
-        // Calculate KST time by adding 9 hours
-        let mut kst_hour = february_28_utc.hour + 9;
-        let mut kst_day = february_28_utc.day;
-        let mut kst_month = february_28_utc.month;
-        let mut kst_year = february_28_utc.year;
-        let minute = february_28_utc.minute;
-        let second = february_28_utc.second;
-
-        // Adjust if the hour exceeds 24
-        if kst_hour >= 24 {
-            kst_hour -= 24;
-            kst_day += 1;
-        }
-
-        // Adjust day and month if needed
-        let days_in_current_month = days_in_month(kst_month, kst_year);
-        if kst_day > days_in_current_month {
-            kst_day = 1;
-            kst_month += 1;
-            if kst_month > 12 {
-                kst_month = 1;
-                kst_year += 1;
-            }
-        }
-
-        // Verify that the calculated KST time matches the expected time
-        assert_eq!(march_1_kst.hour, kst_hour);
-        assert_eq!(march_1_kst.day, kst_day);
-        assert_eq!(march_1_kst.month, kst_month);
-        assert_eq!(march_1_kst.year, kst_year);
-        assert_eq!(march_1_kst.minute, minute);
-        assert_eq!(march_1_kst.second, second);
-    }
-
-    #[test]
-    fn test_month_boundary_transition_kst() {
-        // UTC time on April 30, 2024, 23:59:59
-        let april_30_utc = DateTime::new(2024, 4, 30, 23, 59, 59).unwrap();
-
-        // Expected KST time should be May 1, 2024, 08:59:59
-        let may_1_kst = DateTime::new(2024, 5, 1, 8, 59, 59).unwrap();
-
-        // Calculate KST time by adding 9 hours
-        let mut kst_hour = april_30_utc.hour + 9;
-        let mut kst_day = april_30_utc.day;
-        let mut kst_month = april_30_utc.month;
-        let mut kst_year = april_30_utc.year;
-        let minute = april_30_utc.minute;
-        let second = april_30_utc.second;
-
-        // Adjust if the hour exceeds 24
-        if kst_hour >= 24 {
-            kst_hour -= 24;
-            kst_day += 1;
-        }
-
-        // Adjust day and month if needed
-        let days_in_current_month = days_in_month(kst_month, kst_year);
-        if kst_day > days_in_current_month {
-            kst_day = 1;
-            kst_month += 1;
-            if kst_month > 12 {
-                kst_month = 1;
-                kst_year += 1;
-            }
-        }
-
-        // Verify that the calculated KST time matches the expected time
-        assert_eq!(may_1_kst.hour, kst_hour);
-        assert_eq!(may_1_kst.day, kst_day);
-        assert_eq!(may_1_kst.month, kst_month);
-        assert_eq!(may_1_kst.year, kst_year);
-        assert_eq!(may_1_kst.minute, minute);
-        assert_eq!(may_1_kst.second, second);
-    }
-
-    #[test]
-    fn test_acst_year_boundary_transition() {
-        // UTC time on December 31, 2023, 23:59:59
-        let december_31_utc = DateTime::new(2023, 12, 31, 23, 59, 59).unwrap();
-
-        // Expected ACST time should be January 1, 2024, 09:29:59 (ACST is +9 hours 30 minutes ahead)
-        let january_1_acst = DateTime::new(2024, 1, 1, 9, 29, 59).unwrap();
-
-        // Calculate ACST time by adding 9 hours and 30 minutes
-        let total_minutes = december_31_utc.minute + 30;
-        let acst_minute = total_minutes % 60;
-        let carry_over_hour = total_minutes / 60;
-        let mut acst_hour = december_31_utc.hour + 9 + carry_over_hour;
-        let mut acst_day = december_31_utc.day;
-        let mut acst_month = december_31_utc.month;
-        let mut acst_year = december_31_utc.year;
-        let second = december_31_utc.second;
-
-        // Adjust if the hour exceeds 24
-        if acst_hour >= 24 {
-            acst_hour -= 24;
-            acst_day += 1;
-        }
-
-        // Adjust day and month if needed
-        let days_in_current_month = days_in_month(acst_month, acst_year);
-        if acst_day > days_in_current_month {
-            acst_day = 1;
-            acst_month += 1;
-            if acst_month > 12 {
-                acst_month = 1;
-                acst_year += 1;
-            }
-        }
-
-        // Verify that the calculated ACST time matches the expected time
-        assert_eq!(january_1_acst.hour, acst_hour);
-        assert_eq!(january_1_acst.minute, acst_minute);
-        assert_eq!(january_1_acst.day, acst_day);
-        assert_eq!(january_1_acst.month, acst_month);
-        assert_eq!(january_1_acst.year, acst_year);
-        assert_eq!(january_1_acst.second, second);
-    }
-
-    // Test time zone transition across a large time difference
-    #[test]
-    fn test_timezone_conversion_large_diff() {
-        let utc_time = now(TimeZone::UTC).unwrap();
-        let hst_time = now(TimeZone::HST).unwrap(); // Hawaii Standard Time is UTC -10 hours
-
-        // Calculate the expected hour difference
-        let hour_diff = if utc_time.hour >= hst_time.hour {
-            utc_time.hour - hst_time.hour
-        } else {
-            24 + utc_time.hour - hst_time.hour
+    fn test_add_timedelta() {
+        let datetime = DateTime::new(2023, 12, 31, 23, 59, 59, TimeZone::UTC).unwrap();
+        let delta = TimeDelta {
+            days: 1,
+            seconds: 1,
+            ..Default::default()
         };
-
-        assert_eq!(hour_diff, 10); // UTC should be 10 hours ahead of HST
+        let new_datetime = datetime.add_timedelta(delta).unwrap();
+        let expected_datetime = DateTime::new(2024, 1, 2, 0, 0, 0, TimeZone::UTC).unwrap();
+        assert_eq!(new_datetime, expected_datetime);
     }
 
-    // Test a leap second case (even though Rust does not handle leap seconds directly)
+    // Test sub_timedelta function
     #[test]
-    fn test_leap_second() {
-        let leap_second_case = DateTime::new(2023, 12, 31, 23, 59, 60); // Simulated leap second
-        assert_eq!(leap_second_case.unwrap_err(), "Invalid second".to_string());
-        // Normally seconds range from 0-59
+    fn test_sub_timedelta() {
+        let datetime = DateTime::new(2024, 1, 1, 0, 0, 0, TimeZone::UTC).unwrap();
+        let delta = TimeDelta {
+            days: 1,
+            ..Default::default()
+        };
+        let new_datetime = datetime.sub_timedelta(delta).unwrap();
+        let expected_datetime = DateTime::new(2023, 12, 31, 0, 0, 0, TimeZone::UTC).unwrap();
+        assert_eq!(new_datetime, expected_datetime);
+    }
+
+    // Test addition operator overloading
+    #[test]
+    fn test_add_operator() {
+        let datetime = DateTime::new(2023, 1, 1, 0, 0, 0, TimeZone::UTC).unwrap();
+        let delta = TimeDelta {
+            days: 30,
+            ..Default::default()
+        };
+        let new_datetime = datetime + delta;
+        let expected_datetime = DateTime::new(2023, 1, 31, 0, 0, 0, TimeZone::UTC).unwrap();
+        assert_eq!(new_datetime.unwrap(), expected_datetime);
+    }
+
+    // Test subtraction operator overloading
+    #[test]
+    fn test_sub_operator() {
+        let datetime = DateTime::new(2023, 1, 31, 0, 0, 0, TimeZone::UTC).unwrap();
+        let delta = TimeDelta {
+            days: 30,
+            ..Default::default()
+        };
+        let new_datetime = datetime - delta;
+        let expected_datetime = DateTime::new(2023, 1, 1, 0, 0, 0, TimeZone::UTC).unwrap();
+        assert_eq!(new_datetime.unwrap(), expected_datetime);
+    }
+
+    // Test edge case transitions (e.g., leap years, month/year boundaries)
+    #[test]
+    fn test_edge_case_transitions() {
+        // Leap year transition
+        let datetime = DateTime::new(2024, 2, 28, 23, 59, 59, TimeZone::UTC).unwrap();
+        let delta = TimeDelta {
+            seconds: 1,
+            ..Default::default()
+        };
+        let new_datetime = datetime.add_timedelta(delta).unwrap();
+        let expected_datetime = DateTime::new(2024, 2, 29, 0, 0, 0, TimeZone::UTC).unwrap();
+        assert_eq!(new_datetime, expected_datetime);
+
+        // Non-leap year transition
+        let datetime = DateTime::new(2023, 2, 28, 23, 59, 59, TimeZone::UTC).unwrap();
+        let new_datetime = datetime.add_timedelta(delta).unwrap();
+        let expected_datetime = DateTime::new(2023, 3, 1, 0, 0, 0, TimeZone::UTC).unwrap();
+        assert_eq!(new_datetime, expected_datetime);
+
+        // Year boundary transition
+        let datetime = DateTime::new(2023, 12, 31, 23, 59, 59, TimeZone::UTC).unwrap();
+        let new_datetime = datetime.add_timedelta(delta).unwrap();
+        let expected_datetime = DateTime::new(2024, 1, 1, 0, 0, 0, TimeZone::UTC).unwrap();
+        assert_eq!(new_datetime, expected_datetime);
+    }
+
+    // Test timezone offset correctness
+    #[test]
+    fn test_timezone_offsets() {
+        let datetime_utc = DateTime::new(2023, 8, 1, 12, 0, 0, TimeZone::UTC).unwrap();
+        let datetime_kst = DateTime::new(2023, 8, 1, 21, 0, 0, TimeZone::KST).unwrap();
+
+        // Both should represent the same point in time
+        assert_eq!(
+            datetime_utc.to_unix_seconds(),
+            datetime_kst.to_unix_seconds()
+        );
+
+        let datetime_est = DateTime::new(2023, 8, 1, 7, 0, 0, TimeZone::EST).unwrap();
+        assert_eq!(
+            datetime_utc.to_unix_seconds(),
+            datetime_est.to_unix_seconds()
+        );
+    }
+
+    // Test TimeDelta display implementation
+    #[test]
+    fn test_timedelta_display() {
+        let delta = TimeDelta {
+            weeks: 1,
+            days: 2,
+            hours: 3,
+            minutes: 4,
+            seconds: 5,
+        };
+        let delta_str = format!("{}", delta);
+        assert_eq!(delta_str, "1 week, 2 days, 3 hours, 4 minutes, 5 seconds");
+
+        let delta = TimeDelta {
+            weeks: 0,
+            days: 0,
+            hours: 0,
+            minutes: 0,
+            seconds: 0,
+        };
+        let delta_str = format!("{}", delta);
+        assert_eq!(delta_str, "0 seconds");
+    }
+
+    // Test TimeDelta default implementation
+    #[test]
+    fn test_timedelta_default() {
+        let delta = TimeDelta::default();
+        assert_eq!(delta.weeks, 0);
+        assert_eq!(delta.days, 0);
+        assert_eq!(delta.hours, 0);
+        assert_eq!(delta.minutes, 0);
+        assert_eq!(delta.seconds, 0);
+    }
+
+    // Test error handling when subtracting more than current DateTime
+    #[test]
+    fn test_subtract_past_epoch() {
+        let datetime = DateTime::new(1970, 1, 1, 0, 0, 0, TimeZone::UTC).unwrap();
+        let delta = TimeDelta {
+            days: 1,
+            ..Default::default()
+        };
+        let result = datetime.sub_timedelta(delta);
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err(),
+            "Resulting DateTime is before Unix epoch (1970-01-01 00:00:00 UTC)"
+        );
+    }
+
+    // Test adding negative TimeDelta
+    #[test]
+    fn test_add_negative_timedelta() {
+        let datetime = DateTime::new(2023, 1, 2, 0, 0, 0, TimeZone::UTC).unwrap();
+        let delta = TimeDelta {
+            days: -1,
+            ..Default::default()
+        };
+        let new_datetime = datetime.add_timedelta(delta).unwrap();
+        let expected_datetime = DateTime::new(2023, 1, 1, 0, 0, 0, TimeZone::UTC).unwrap();
+        assert_eq!(new_datetime, expected_datetime);
+    }
+
+    // Test TimeZone offset_in_seconds correctness
+    #[test]
+    fn test_timezone_offset_in_seconds() {
+        assert_eq!(TimeZone::UTC.offset_in_seconds(), 0);
+        assert_eq!(TimeZone::KST.offset_in_seconds(), 9 * 3600);
+        assert_eq!(TimeZone::EST.offset_in_seconds(), -5 * 3600);
+        assert_eq!(TimeZone::IST.offset_in_seconds(), 5 * 3600 + 1800); // 5 hours 30 minutes
+    }
+
+    // Test compute_total_seconds utility function
+    #[test]
+    fn test_compute_total_seconds() {
+        let total_seconds = compute_total_seconds(1, 1, 1, 1, 1);
+        let expected_seconds = SECONDS_IN_WEEK as i64
+            + SECONDS_IN_DAY as i64
+            + SECONDS_IN_HOUR as i64
+            + SECONDS_IN_MINUTE as i64
+            + 1;
+        assert_eq!(total_seconds, expected_seconds);
+    }
+
+    // Test adjust_second_with_timezone utility function
+    #[test]
+    fn test_adjust_second_with_timezone() {
+        let total_seconds = 1000;
+        let adjusted_seconds = adjust_second_with_timezone(total_seconds, TimeZone::KST);
+        assert_eq!(adjusted_seconds, total_seconds + (9 * 3600) as u64);
+    }
+
+    // Test calculate_date_since_epoch utility function
+    #[test]
+    fn test_calculate_date_since_epoch() {
+        let adjusted_seconds = 0;
+        let datetime = calculate_date_since_epoch(adjusted_seconds, TimeZone::UTC).unwrap();
+        let expected_datetime = DateTime::new(1970, 1, 1, 0, 0, 0, TimeZone::UTC).unwrap();
+        assert_eq!(datetime, expected_datetime);
     }
 
     #[test]
-    fn test_valid_strftime() {
-        let dt = DateTime::new(2023, 8, 3, 5, 20, 59).unwrap();
-        assert_eq!(dt.strftime("%Y-%m-%d %H:%M:%S"), "2023-08-03 05:20:59");
+    fn test_timezone_offsets_correctness() {
+        assert_eq!(TimeZone::UTC.offset_in_seconds(), 0);
+        assert_eq!(TimeZone::KST.offset_in_seconds(), 32400);
+        assert_eq!(TimeZone::EST.offset_in_seconds(), -18000);
+        assert_eq!(TimeZone::PST.offset_in_seconds(), -28800);
+        assert_eq!(TimeZone::IST.offset_in_seconds(), 19800);
+    }
+    #[test]
+    fn test_from_unix_seconds_debug() {
+        let unix_seconds = 1690891200; // UTC 기준 2023-08-01 12:00:00
+        let datetime_utc = DateTime::from_unix_seconds(unix_seconds, TimeZone::UTC).unwrap();
+        let datetime_kst = DateTime::from_unix_seconds(unix_seconds, TimeZone::KST).unwrap();
+
+        println!("UTC DateTime: {:?}", datetime_utc);
+        println!("KST DateTime: {:?}", datetime_kst);
+
+        assert_eq!(datetime_utc.to_unix_seconds(), unix_seconds);
+        assert_eq!(datetime_kst.to_unix_seconds(), unix_seconds);
+    }
+
+    #[test]
+    fn test_all_timezone_offsets() {
+        let unix_seconds = 1690891200; // UTC 기준 2023-08-01 12:00:00
+
+        let timezones = vec![
+            TimeZone::UTC,
+            TimeZone::KST,
+            TimeZone::EST,
+            TimeZone::PST,
+            TimeZone::JST,
+            TimeZone::IST,
+            TimeZone::CET,
+            TimeZone::AST,
+            TimeZone::CST,
+            TimeZone::MST,
+            TimeZone::AKST,
+            TimeZone::HST,
+            TimeZone::BST,
+            TimeZone::WET,
+            TimeZone::EET,
+            TimeZone::SAST,
+            TimeZone::EAT,
+            TimeZone::AEST,
+            TimeZone::ACST,
+            TimeZone::AWST,
+            TimeZone::CSTAsia,
+            TimeZone::SGT,
+            TimeZone::HKT,
+        ];
+
+        for timezone in &timezones {
+            let datetime = DateTime::from_unix_seconds(unix_seconds, *timezone).unwrap();
+            let recalculated_unix = datetime.to_unix_seconds();
+
+            println!(
+                "Timezone: {:?}, DateTime: {:?}, Recalculated Unix: {}, Expected Unix: {}",
+                timezone, datetime, recalculated_unix, unix_seconds
+            );
+
+            assert_eq!(
+                recalculated_unix, unix_seconds,
+                "Timezone {:?} failed",
+                timezone
+            );
+        }
+    }
+
+    #[test]
+    fn test_datetime_new_correctness_debug() {
+        let datetime_utc = DateTime::new(2023, 8, 1, 12, 0, 0, TimeZone::UTC).unwrap();
+        let datetime_kst = DateTime::new(2023, 8, 1, 21, 0, 0, TimeZone::KST).unwrap();
+        let datetime_est = DateTime::new(2023, 8, 1, 7, 0, 0, TimeZone::EST).unwrap();
+
+        println!("UTC: {:?}", datetime_utc);
+        println!("KST: {:?}", datetime_kst);
+        println!("EST: {:?}", datetime_est);
+
+        println!(
+            "UTC to Unix Seconds: {}, KST to Unix Seconds: {}, EST to Unix Seconds: {}",
+            datetime_utc.to_unix_seconds(),
+            datetime_kst.to_unix_seconds(),
+            datetime_est.to_unix_seconds()
+        );
+
+        assert_eq!(datetime_utc.to_unix_seconds(), 1690891200);
+        assert_eq!(datetime_kst.to_unix_seconds(), 1690891200);
+        assert_eq!(datetime_est.to_unix_seconds(), 1690891200);
     }
 }

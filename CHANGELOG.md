@@ -1,3 +1,11 @@
+
+## [0.2.0] - 2024-12-1
+
+### Added
+- Introduced `TimeDelta` struct for performing time arithmetic (add/subtract days, hours, minutes, and seconds).
+- Extended `DateTime` functionality to support addition and subtraction of `TimeDelta`.
+- Updated README to include usage examples for time arithmetic.
+
 ## [0.1.4] - 2024-11-14
 
 ### Changed
